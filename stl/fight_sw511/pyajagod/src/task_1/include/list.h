@@ -40,7 +40,6 @@ class list {
   // 常迭代器
   class const_iterator {
     // 比较是否相同，如何++，如何--，如何取值
-
    public:
     const_iterator() {}
     const_iterator(_Nodeptr _P) : _Ptr(_P) {}
@@ -285,7 +284,6 @@ class list {
     _Acc::_Prev(_S) = _Parg != 0 ? _Parg : _S;
     return _S;
   }
-
   void _Freenode(_Nodeptr _S) {
     allocator.deallocate(_S, 1);  // operator delete(_S)
   }
