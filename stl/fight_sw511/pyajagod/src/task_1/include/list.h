@@ -144,6 +144,7 @@ class list {
       iterator _Tmp = *this;
       --*this;
       return (_Tmp);
+
     }
 
    protected:
@@ -365,7 +366,6 @@ class list {
     _Acc::_Prev(_S) = _Parg != 0 ? _Parg : _S;
     return _S;
   }
-
   void _FreeNode(_Nodeptr _S) {
     myallocator.deallocate(_S, 1);  // operator delete(_S)
   }
