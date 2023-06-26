@@ -1,6 +1,6 @@
 #include <assert.h>
-#include <iostream>
-template <class _Ty>
+#include "xmemory.h"
+template <class _Ty, class _A = allocator<_Ty>>
 class list {
  public:
   struct _Node;
@@ -52,25 +52,25 @@ class list {
     // 前++
     const_iterator& operator++() {
       _Ptr = _Acc::_Next(_Ptr);
-      return *this;
+      return (*this);
     }
     // 后++
     const_iterator operator++(int) {
       const_iterator _Tmp = *this;
-      ++(*this);
-      return _Tmp;
+      ++*this;
+      return (_Tmp);
     }
     // 重写--
     // 前--
     const_iterator& operator--() {
       _Ptr = _Acc::_Prev(_Ptr);
-      return *this;
+      return (*this);
     }
     // 后--
     const_iterator operator--(int) {
       const_iterator _Tmp = *this;
-      --(*this);
-      return _Tmp;
+      --*this;
+      return (_Tmp);
     }
     // 比较是否相同与不同
     bool operator==(const const_iterator& _X) const { return _Ptr == _X._Ptr; }
@@ -103,20 +103,20 @@ class list {
     // 后++
     iterator operator++(int) {
       iterator _Tmp = *this;
-      ++(*this);
-      return _Tmp;
+      ++*this;
+      return (_Tmp);
     }
     // 重写--
     // 前--
     iterator& operator--() {
       _Ptr = _Acc::_Prev(_Ptr);
-      return *this;
+      return (*this);
     }
     // 后--
     iterator operator--(int) {
       iterator _Tmp = *this;
-      --(*this);
-      return _Tmp;
+      --*this;
+      return (_Tmp);
     }
     // 比较是否相同与不同
     bool operator==(const iterator& _X) const { return _Ptr == _X._Ptr; }
@@ -172,7 +172,10 @@ class list {
   void push_back(const _Ty& _X) { insert(end(), _X); }
   // 头插
   void push_front(const _Ty& _X) { insert(begin(), _X); }
-  void pop_back() { erase(--end()); }
+  void pop_back() {
+    // std::cout << "pop_back" << (end())._Mynode()->_Value << std::endl;
+    erase(--end());
+  }
   void pop_front() { erase(begin()); }
   void clear() { erase(begin(), end()); }
   void assign(iterator _F, iterator _L) {
@@ -206,20 +209,24 @@ class list {
   // iterator insert(iterator _P, const _Ty& _X = _Ty()) {
   //   _Nodeptr _Ptr = _P._Mynode();
   //   _Nodeptr _S = _Buynode(_Ptr, _Acc::_Prev(_Ptr));
-  //   _S->_Value = _X;
   //   _Acc::_Prev(_Ptr) = _S;
   //   _Acc::_Next(_Acc::_Prev(_S)) = _S;
   //   // _Acc::_Value(_X);
+  //   allocator.construct(&_Acc::_Value(_S), _X);
   //   _Size++;
   //   return iterator(_S);
   // }
   iterator insert(iterator _P, const _Ty& _X = _Ty()) {
     _Nodeptr _S = _P._Mynode();
-    // _Ptr->_Value = _X;
     _Acc::_Prev(_S) = _Buynode(_S, _Acc::_Prev(_S));
     _S = _Acc::_Prev(_S);
     _Acc::_Next(_Acc::_Prev(_S)) = _S;
-    _S->_Value = _X;
+    ////////////////////////////////////////
+    // _S->_Value = _X;
+    // _Acc::_Value(_S) = _X;
+    // allocator.construct(&_S->_Value, _X);
+    allocator.construct(&_Acc::_Value(_S), _X);
+    ///////////////////////////////////////
 
     _Size++;
     return iterator(_S);
@@ -242,10 +249,15 @@ class list {
 
   iterator erase(iterator _P) {
     _Nodeptr _S = (_P++)._Mynode();
+    std::cout << _S->_Value << " ===== " << std::endl;
     _Acc::_Next(_Acc::_Prev(_S)) = _Acc::_Next(_S);
     _Acc::_Prev(_Acc::_Next(_S)) = _Acc::_Prev(_S);
     ///////////////////////////////////
-    free(_S);
+    // free(_S);  // 只释放节点，未释放空间
+    // delete _S;
+    // 释放节点前要析构对象
+    // allocator.destroy(&_Acc::_Value(_S));
+    _Freenode(_S);
     //////////////////////////////////
     --_Size;
     return _P;
@@ -262,14 +274,23 @@ class list {
  protected:
   // _Narg后继参数 _Parg前继参数
   _Nodeptr _Buynode(_Nodeptr _Narg = 0, _Nodeptr _Parg = 0) {
-    _Nodeptr _S = (_Nodeptr)malloc(sizeof(_Node));
+    // 不使用适配器
+    // _Nodeptr _S = (_Nodeptr)malloc(sizeof(_Node));
+    // 使用适配器
+    _Nodeptr _S = (_Nodeptr)allocator._Charalloc(sizeof(_Node));
+    // _Nodeptr _S = (_Nodeptr)allocator.allocate(1, 0);
     assert(_S != NULL);
     _Acc::_Next(_S) = _Narg != 0 ? _Narg : _S;
     _Acc::_Prev(_S) = _Parg != 0 ? _Parg : _S;
     return _S;
   }
+  void _Freenode(_Nodeptr _S) {
+    allocator.deallocate(_S, 1);  // operator delete(_S)
+  }
 
  private:
+  // 空间适配器
+  _A allocator;
   _Nodeptr _Head;
   size_type _Size;
 };
